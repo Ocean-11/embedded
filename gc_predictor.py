@@ -205,7 +205,7 @@ class image_predictor:
         next_image_data = iterator.get_next()
 
         num_of_stixels = len(predictions_list)
-        print('Number of stixels to be proceesed  {}'.format(num_of_stixels))
+        #print('Number of stixels to be proceesed  {}'.format(num_of_stixels))
 
         # Go through the TFRecord and reconstruct the images + predictions
 
@@ -258,15 +258,15 @@ class image_predictor:
         if self.debug_image:
             name.replace('.jpg',' debug.jpg')
             name = ' {} N{}_T{}_Tr{} debug.jpg'.format(self.model_name, N, T, W_trans)
-            print('replacing name to indicate debug !!!!!!')
-            print(name)
+            #print('replacing name to indicate debug !!!!!!')
+            #print(name)
 
         image_out_name = os.path.basename(image_in)
         image_out_name = image_out_name.replace('.jpg', name)
         image_out_name = os.path.basename(image_out_name)
         image_file_name = os.path.join(self.out_folder, image_out_name)
         plt.savefig(image_file_name, format='jpg')
-        print('saving fig to ', image_file_name)
+        #print('saving fig to ', image_file_name)
 
         if self.show_images:
             plt.show()
@@ -279,10 +279,10 @@ class image_predictor:
 
     def image_2_tfrec(self, image_in, tfrec_filename, model_stixel_width):
 
-        start_time = time.time()
+        #start_time = time.time()
         # Create TFRec writer
         os.chdir(os.path.dirname(image_in))
-        print('TFRec output file = ', tfrec_filename)
+        #print('TFRec output file = ', tfrec_filename)
         writer = tf.python_io.TFRecordWriter(tfrec_filename)
 
         # parse the image and save it to TFrecord
@@ -290,8 +290,10 @@ class image_predictor:
         f_to_stx.create_stx(False)
         writer.close()
 
+        '''
         duration = time.time() - start_time
         print('TFRec creation took {} sec'.format(int(duration)))
+        '''
 
     ######################################
     ###      start a new prediction   ###
@@ -300,16 +302,33 @@ class image_predictor:
     def predict(self, image_in):
 
         # Translate the image to a TF record
+        print('\n**** Start creating TFrec ****')
+        start_time = time.time()
         tfrec_filename = image_in.replace('.jpg', '_W' + str(self.W) + '.tfrecord')
         self.image_2_tfrec(image_in, tfrec_filename, self.W)
         data_files = {'test': tfrec_filename}
+        duration = time.time() - start_time
+        print('-> Create TFrec time = {}\n'.format(duration))
+
+        #print('**** Start predict prep ****')
+        #start_time = time.time()
         predictions = self.estimator.predict(input_fn=lambda: dataset_input_fn('test', data_files))
+        #duration = time.time() - start_time
+        #print('-> Prepare to predict time = {}\n'.format(duration))
 
         # Predict!
+        print('*** Start predict ****')
+        start_time = time.time()
         predictions_list = list(predictions)
+        duration = time.time() - start_time
+        print('-> Predict time = {}\n'.format(duration))
 
         # Visualize predictions based on single test TFrecord
+        print('*** Start visulaize ****')
+        start_time = time.time()
         self.visualize_pred(image_in, tfrec_filename, predictions_list)
+        duration = time.time() - start_time
+        print('-> Visualize time = {}\n'.format(duration))
 
 if __name__ == '__main__':
 
@@ -332,6 +351,8 @@ if __name__ == '__main__':
         if os.path.exists(model_dir + '/model_for_CRF.py'):
             from model_for_CRF import model_fn, params
 
+            start_time = time.time()
+
             # Create image_predictor object
             predictor = image_predictor(image_in, image_out_dir, image_width, model_dir, debug_image=True, show_images=False)
 
@@ -340,6 +361,10 @@ if __name__ == '__main__':
 
             # Close the session
             predictor.close_session()
+
+            duration = time.time() - start_time
+            print('\n************ Total time = {} ************\n'.format(duration))
+
         else:
             print('No model file within directory - exiting!!!!')
 

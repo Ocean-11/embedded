@@ -19,7 +19,8 @@
 
 import tensorflow as tf
 from tensorflow.contrib.layers.python.layers import utils
-import os
+#import os
+import time
 
 # params - defining the stixel dimensions for the entire toolchain (RAN)
 H = 370
@@ -197,6 +198,8 @@ def _inverted_residual_block(inputs, filters, kernel, t, strides, n, is_training
 
 def MobileNetV2(inputs, k, is_training):
 
+    print('Running MobileNet')
+
     with tf.variable_scope('Conv-block'):
         x = _conv_block(inputs=inputs, filters=32, kernel=(3, 3), strides=(2, 2), is_training=is_training)
 
@@ -261,6 +264,8 @@ def MobileNetV2(inputs, k, is_training):
 
 def model_fn(features, labels, mode, params):
 
+    start = time.time()
+
     # decide if training or not
     if mode == tf.estimator.ModeKeys.TRAIN:
         is_training = True
@@ -280,17 +285,9 @@ def model_fn(features, labels, mode, params):
     # 1. Define model structure
     with tf.variable_scope('mobilenetV2'):
         net = MobileNetV2(inputs=x_image, k=74, is_training=is_training) # RAN changed k to 74 (0-73) - temporary!!!!!
-    #net = MobileNetV2(inputs=inputs, k=73, is_training=is_training)
 
     # Logits output of the neural network.
     logits = net
-
-    # Softmax output of the neural network.
-    #y_pred = tf.nn.softmax(logits=logits)
-
-    # Classification output of the neural network.
-    #y_pred_cls = tf.argmax(y_pred, axis=1)
-
 
     # Generate predictions (for PREDICT and EVAL mode) - consider if classes = argmax(logits) or argmax(softmax()) as previously !!!!!!!!!!!!!!!!
     predictions = {
@@ -302,86 +299,24 @@ def model_fn(features, labels, mode, params):
         "classes": tf.argmax(input=logits, axis=1),
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")})
 
+    print("---> model_fn time = {}".format(time.time()-start))
+
     # 2. Generate predictions
-    #if mode == tf.estimator.ModeKeys.PREDICT:
-    #    return tf.estimator.EstimatorSpec(mode=mode, predictions=y_pred_cls)
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(
-            mode=mode,
-            predictions=predictions,
-            export_outputs={tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: prediction_output})
-
-    # 3. Define the loss functions
-
-    with tf.variable_scope("xent"):
-        # calculate the cross-entropy between the output of
-        # the neural network and the true labels for the input data.
-        # This gives the cross-entropy for each image in the batch.
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-            labels=labels,
-            logits=logits)
-
-        # Reduce the cross-entropy batch-tensor to a single number
-        # which can be used in optimization of the neural network.
-        tf.argmax(logits)
-
-        loss = tf.reduce_mean(cross_entropy)
-
-    # 3.1 Additional metrics for monitoring (in this case the classification accuracy)
-    #with tf.variable_scope("accuracy"):
-    #    metrics = {"accuracy": tf.metrics.accuracy(
-    #        labels, y_pred_cls)}
-    with tf.variable_scope("accuracy"):
-        metrics = {"accuracy": tf.metrics.accuracy(
-            labels=labels, predictions=predictions["classes"])}
-
-    # 4. Define optimizer
-    with tf.variable_scope("train"):
-        lr = params.learning_rate
-        #lr = 1e-4 # RAN - original StixelNET value
-        step_rate = 20000
-        #step_rate = 5000 # original StixelNET value
-        decay = 0.95 # try to break the 0.23 accuracy barrier ...
-        #decay = 0.7  # if this equals 1 the lr stays the same (original StixelNET value)
-        learning_rate = tf.train.exponential_decay(
-            lr, global_step=tf.train.get_or_create_global_step(),
-            decay_steps=step_rate,
-            decay_rate=decay,
-            staircase=True)
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-        #print('Learning rate = {}'.format(learning_rate))
-
-        # for learning parameters of batch normalization:
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            train_op = optimizer.minimize(loss, global_step=tf.train.get_or_create_global_step())
-
-    # 5. Return training/evaluation EstimatorSpec
-    spec = tf.estimator.EstimatorSpec(
+    return tf.estimator.EstimatorSpec(
         mode=mode,
-        loss=loss,
-        train_op=train_op,
-        eval_metric_ops=metrics)
+        predictions=predictions,
+        export_outputs={tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: prediction_output})
 
-    tf.summary.scalar("accuracy", metrics["accuracy"][1])
-    tf.summary.scalar("loss", loss)
-    '''
-    with tf.Session() as sess:
-        print('Loss & accuracy = ' )
-        print(sess.run(loss))
-        print(sess.run(metrics["accuracy"][1]))
-    '''
-    #print('Loss = {} accuracy = {}'.format(loss, metrics["accuracy"][1]))
-    tf.summary.image('input', x_image, 1)
-    for var in tf.trainable_variables():
-        tf.summary.histogram(var.name, var)
-    return spec
+
 
 #######################################
 ###   Defining the Parse Function   ###
 #######################################
 
 def parse(serialized):
+
+    print('parse')
+
     # Define the features to be parsed out of each example.
     #    You should recognize this from when we wrote the TFRecord files!
     features ={

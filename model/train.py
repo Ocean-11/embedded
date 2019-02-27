@@ -29,6 +29,7 @@ import sys
 
 # based on - https://stackoverflow.com/questions/49846207/tensorflow-estimator-warm-start-from-and-model-dir
 
+'''
 class InitHook(tf.train.SessionRunHook):
     """initializes model from a checkpoint_path
     args:
@@ -51,6 +52,7 @@ class InitHook(tf.train.SessionRunHook):
                 log.info('Pre-trained model {0} found in {1} - warmstarting.'.format(checkpoint, self.modelPath))
                 tf.train.warm_start(checkpoint)
             self.initialized = True
+            '''
 
 
 #############################
@@ -87,7 +89,7 @@ data_files = {'train' : train_files, 'valid' : valid_files, 'test' : test_files}
 
 #plt.style.use("seaborn-colorblind")
 # RAN - Setup logger - only displays the most important warnings
-tf.logging.set_verbosity(tf.logging.INFO) # possible values - DEBUG / INFO / WARN / ERROR / FATAL
+tf.logging.set_verbosity(tf.logging.FATAL) # possible values - DEBUG / INFO / WARN / ERROR / FATAL
 #tf.logging.set_verbosity(tf.logging.INFO)
 
 #######################################
@@ -130,6 +132,7 @@ def dataset_input_fn(mode):
         dataset: the Dataset object constructed for this mode and pre-processed
 '''
 def load_dataset(mode):
+    start = time.time()
     # Taking either the train or validation files from the dictionary we constructed above
     files = data_files[mode]
     # Created a Dataset from our list of TFRecord files
@@ -148,6 +151,7 @@ def load_dataset(mode):
     # Batch the data - you can pick a batch size, maybe 32, and later
     #    we will include this in a dictionary of other hyper parameters.
     dataset = dataset.batch(params.batch_size)
+    print("---> load_dataset time = {}".format(time.time() - start))
     return dataset
 
 
@@ -191,18 +195,6 @@ estimator = tf.estimator.Estimator(model_fn=model_fn,
                                    warm_start_from=warm_start_path)
 '''
 
-'''
-def initialize_uninitialized(sess):
-    global_vars          = tf.global_variables()
-    is_not_initialized   = sess.run([tf.is_variable_initialized(var) for var in global_vars])
-    not_initialized_vars = [v for (v, f) in zip(global_vars, is_not_initialized) if not f]
-
-    print [str(i.name) for i in not_initialized_vars] # only for testing
-    if len(not_initialized_vars):
-        sess.run(tf.variables_initializer(not_initialized_vars))
-
-'''
-
 ##########################
 ###   Copy File Over   ###
 ##########################
@@ -236,41 +228,3 @@ for e in range(params.train_epochs):
     estimator.evaluate(input_fn=lambda: dataset_input_fn('valid'))
 
 print('tensorboard --logdir=' + str(model_dir))
-
-'''
-' Code for warm start: '
-warm_start_dir = '/home/dev/PycharmProjects/stixel/TF_stixels/results/2019-01-01_14-48-55_EP_100'
-initHook = InitHook(checkpoint_dir = warm_start_dir)
-trainSpec = tf.estimator.TrainSpec(
-    input_fn = train_input_fn,
-    max_steps = N_STEPS, 
-    hooks = [initHook]
-)
-evalSpec = tf.estimator.EvalSpec(
-    input_fn = eval_input_fn,
-    steps = None,
-    name = 'eval',
-    throttle_secs = 3600
-)
-tf.estimator.train_and_evaluate(estimator, trainSpec, evalSpec)
-'''
-
-'''
-experiment = tf.contrib.learn.Experiment(
-    estimator=estimator,  # Estimator
-    train_input_fn=train_input_fn,  # First-class function
-    eval_input_fn=eval_input_fn,  # First-class function
-    train_steps=params.train_steps,  # Minibatch steps
-    min_eval_frequency=params.min_eval_frequency,  # Eval frequency
-    train_monitors=[train_input_hook],  # Hooks for training
-    eval_hooks=[eval_input_hook],  # Hooks for evaluation
-    eval_steps=None  # Use evaluation feeder until its empty
-)
-
-learn_runner.run(
-    experiment_fn=experiment_fn,  # First-class function
-    run_config=run_config,  # RunConfig
-    schedule="train_and_evaluate",  # What to run
-    hparams=params  # HParams
-)
-'''
