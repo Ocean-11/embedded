@@ -198,7 +198,7 @@ def _inverted_residual_block(inputs, filters, kernel, t, strides, n, is_training
 
 def MobileNetV2(inputs, k, is_training):
 
-    print('Running MobileNet')
+    print('Running MobileNet {}'.format(time.time()))
 
     with tf.variable_scope('Conv-block'):
         x = _conv_block(inputs=inputs, filters=32, kernel=(3, 3), strides=(2, 2), is_training=is_training)
@@ -264,32 +264,26 @@ def MobileNetV2(inputs, k, is_training):
 
 def model_fn(features, labels, mode, params):
 
-    start = time.time()
-
     # decide if training or not
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        is_training = True
-        print('Model training mode')
-    else:
-        is_training = False
-        print('Model eval mode')
-
+    is_training = False
 
     # Reference to the tensor named "image" in the input-function.
     with tf.variable_scope('Reshape'):
         x = features["image"]
-        # Reshape from 2-rank tensor to a 4-rank tensor expected by the convolutional layers
         x_image = tf.reshape(x, [-1, H, W, C])
-        #inputs = tf.reshape(x, [-1, H, W, C])
+
+    start = time.time()
 
     # 1. Define model structure
     with tf.variable_scope('mobilenetV2'):
         net = MobileNetV2(inputs=x_image, k=74, is_training=is_training) # RAN changed k to 74 (0-73) - temporary!!!!!
 
+    print("---> net = MobilenetV2 = {}".format(time.time() - start))
+
     # Logits output of the neural network.
     logits = net
 
-    # Generate predictions (for PREDICT and EVAL mode) - consider if classes = argmax(logits) or argmax(softmax()) as previously !!!!!!!!!!!!!!!!
+    # Generate predictions (for PREDICT and EVAL mode)
     predictions = {
         "classes": tf.argmax(input=logits, axis=1),
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor"), # Add `softmax_tensor` to the graph. It is used for PREDICT and by the `logging_hook`
@@ -299,7 +293,6 @@ def model_fn(features, labels, mode, params):
         "classes": tf.argmax(input=logits, axis=1),
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")})
 
-    print("---> model_fn time = {}".format(time.time()-start))
 
     # 2. Generate predictions
     return tf.estimator.EstimatorSpec(
@@ -332,32 +325,6 @@ def parse(serialized):
 
     label = parsed_example['label']
     return {'image': image}, label
-
-'''
-# Support added features set
-def parse(serialized):
-    # Define the features to be parsed out of each example.
-    #    You should recognize this from when we wrote the TFRecord files!
-    features = {
-        'image': tf.FixedLenFeature([], tf.string),
-        'label': tf.FixedLenFeature([], tf.int64),
-        'frame_id': tf.FixedLenFeature([], tf.int64),
-        'name': tf.FixedLenFeature([], tf.string),
-    }
-
-    # Parse the features out of this one record we were passed
-    parsed_example = tf.parse_single_example(serialized=serialized, features=features)
-    # Format the data
-    image_raw = parsed_example['image']
-    image = tf.image.decode_png(image_raw, channels=3, dtype=tf.uint8) # Decode the raw bytes so it becomes a tensor with type.
-    image = tf.cast(image, tf.float32)  # The type is now uint8 but we need it to be float.
-
-    label = parsed_example['label']
-    frame_id = parsed_example['frame_id']
-    frame_name = parsed_example['frame_name']
-    return {'image': image}, label, frame_id, frame_name
-    '''
-
 
 ###################################
 ###   Define Hyper Parameters   ###

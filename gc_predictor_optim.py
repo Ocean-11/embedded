@@ -270,11 +270,6 @@ class image_predictor:
         f_to_stx.create_stx(False)
         writer.close()
 
-        '''
-        duration = time.time() - start_time
-        print('TFRec creation took {} sec'.format(int(duration)))
-        '''
-
     ######################################
     ###      start a new prediction   ###
     #####################################
@@ -300,7 +295,7 @@ class image_predictor:
         print('*** Start predict ({}) ****'.format(time.time()))
         start_time = time.time()
         predictions_list = list(predictions)
-        print('-> Predict time = {}\n'.format(time.time() - start_time))
+        print('-> Predict time = {}, {}\n'.format(time.time() - start_time, time.time()))
 
         # Visualize predictions based on single test TFrecord
         print('*** Start visulaize ****')
@@ -329,14 +324,16 @@ if __name__ == '__main__':
         if os.path.exists(model_dir + '/model_for_CRF.py'):
             from model_for_CRF import model_fn, params
 
-            start_time = time.time()
-
             # Create image_predictor object
-            predictor = image_predictor(image_in, image_out_dir, image_width, model_dir, debug_image=True, show_images=False)
+            predictor = image_predictor(image_in, image_out_dir, image_width, model_dir, debug_image=False, show_images=False)
 
             # Predict
             predictor.predict(image_in)
 
+            start_time = time.time()
+            predictor.predict(os.path.join(cwd, 'frame_000136.jpg'))
+            #predictor.predict(os.path.join(cwd, 'frame_000136.jpg'))
+            #predictor.predict(os.path.join(cwd, 'frame_000142.jpg'))
             # Close the session
             predictor.close_session()
 

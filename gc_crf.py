@@ -21,6 +21,7 @@
 # from __future__ import absolute_import
 
 import numpy as np
+import time
 
 ############################################
 ###   Viterbi algorithm implementation   ###
@@ -49,6 +50,8 @@ def create_transition_matrix(dim, N, T, Wb):
 # Go through the columns and compute the following Viterbi function: Wu*P + Wb*min(max((|y1-y2|-N,0),T)
 
 def viterbi(observations_matrix, N, T, W_trans):
+
+    start_time = time.time()
 
     # Init
     W_unary = 1
@@ -131,6 +134,8 @@ def viterbi(observations_matrix, N, T, W_trans):
     # Reverse the list
     best_path = list(reversed(best_path_r))
     #print(best_path)
+
+    print('----> CRF time = {}'.format(time.time()-start_time))
 
     return best_path
 

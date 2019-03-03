@@ -85,8 +85,9 @@ class Frame2StxTfrecords:
 
         print(width)
 
-        x_start = 0
-        x_stop = width-4 # EMBEDDED - handle properly !!!!!!!!!
+        crop_width = 0
+        x_start = 0 + crop_width
+        x_stop = width-4 - crop_width # EMBEDDED - handle properly !!!!!!!!!
 
         annotated_w = x_stop - x_start + 1
         #print('start={} stop={} w={}'.format(x_start, x_stop, annotated_w))
